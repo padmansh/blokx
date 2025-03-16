@@ -315,7 +315,7 @@ const GameBoard = () => {
 
           <div
             onClick={passTurn}
-            className={`w-full text-center bg-gray-200 mt-6 p-2 rounded-sm text-gray-500 hover:text-gray-800 cursor-pointer hover:bg-gray-300 duration-300`}
+            className={`flex flex-1 items-center justify-center mx-6 text-center bg-gray-200 mt-6 p-2 rounded-sm text-gray-500 hover:text-gray-800 cursor-pointer hover:bg-gray-300 duration-300`}
           >
             PASS
           </div>
