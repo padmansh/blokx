@@ -26,6 +26,7 @@ const tile: Tile = {
   filled: false,
   semifilled: false,
   pId: 0,
+  possible: false,
 };
 
 const b = Array(BOARD_SIZE).fill(Array(BOARD_SIZE).fill(tile));
@@ -140,82 +141,89 @@ const GameBoard = () => {
   const [actualActivePlayer, setActualActivePlayer] = useState(1);
   const [activePlayerId, setActivePlayerId] = useState(1);
 
-  const handleDrag = (event: DragEndEvent, move: boolean) => {
-    const { active } = event || {};
-    const {
-      rows: totalRows,
-      cols: totalCols,
-      index,
-    } = active?.data?.current || {};
-    const pieceData = JSON.parse(String(active?.id) || "");
-    const [startRow, startCol] = getStartPosition(event);
-    const bcpy = JSON.parse(JSON.stringify(boardRef.current));
+  const handleDrag = useCallback(
+    (event: DragEndEvent, move: boolean) => {
+      const { active } = event || {};
+      const {
+        rows: totalRows,
+        cols: totalCols,
+        index,
+      } = active?.data?.current || {};
+      const pieceData = JSON.parse(String(active?.id) || "");
+      const [startRow, startCol] = getStartPosition(event);
+      const bcpy = JSON.parse(JSON.stringify(boardRef.current));
 
-    if (isNaN(Number(startRow)) || isNaN(Number(startCol))) {
-      setBoard(bcpy);
-      return;
-    }
+      if (isNaN(Number(startRow)) || isNaN(Number(startCol))) {
+        setBoard(bcpy);
+        return;
+      }
 
-    const isValidPlacement = validatePlacement(
-      startRow,
-      startCol,
-      totalRows,
-      totalCols,
-      bcpy,
-      pieceData,
-      tilesCoveredByPlacedPieces[
-        activePlayerId as keyof typeof tilesCoveredByPlacedPieces
-      ]?.length,
-      activePlayerId
-    );
+      const isValidPlacement = validatePlacement(
+        startRow,
+        startCol,
+        totalRows,
+        totalCols,
+        bcpy,
+        pieceData,
+        tilesCoveredByPlacedPieces[
+          activePlayerId as keyof typeof tilesCoveredByPlacedPieces
+        ]?.length,
+        activePlayerId
+      );
 
-    if (!isValidPlacement) {
-      setBoard(bcpy);
-      return;
-    }
+      if (!isValidPlacement) {
+        setBoard(bcpy);
+        return;
+      }
 
-    for (let i = startRow; i < startRow + totalRows; i++) {
-      for (let j = startCol; j < startCol + totalCols; j++) {
-        if (move) {
-          bcpy[i][j].semifilled = bcpy[i][j].filled
-            ? false
-            : pieceData[i - startRow][j - startCol]?.value;
-          bcpy[i][j].pId = bcpy[i][j].filled ? bcpy[i][j].pId : activePlayerId;
-        } else {
-          bcpy[i][j].pId = bcpy[i][j].filled ? bcpy[i][j].pId : activePlayerId;
-          bcpy[i][j].filled =
-            bcpy[i][j].filled || pieceData[i - startRow][j - startCol]?.value;
+      for (let i = startRow; i < startRow + totalRows; i++) {
+        for (let j = startCol; j < startCol + totalCols; j++) {
+          if (move) {
+            bcpy[i][j].semifilled = bcpy[i][j].filled
+              ? false
+              : pieceData[i - startRow][j - startCol]?.value;
+            bcpy[i][j].pId = bcpy[i][j].filled
+              ? bcpy[i][j].pId
+              : activePlayerId;
+          } else {
+            bcpy[i][j].pId = bcpy[i][j].filled
+              ? bcpy[i][j].pId
+              : activePlayerId;
+            bcpy[i][j].filled =
+              bcpy[i][j].filled || pieceData[i - startRow][j - startCol]?.value;
 
-          if (pieceData[i - startRow][j - startCol]?.value) {
-            setTilesCoveredByPlacedPieces((prev) => {
-              return {
-                ...prev,
-                [activePlayerId]: [
-                  ...(prev[activePlayerId as keyof typeof prev] || []),
-                  `${i},${j}`,
-                ],
-              };
-            });
+            if (pieceData[i - startRow][j - startCol]?.value) {
+              setTilesCoveredByPlacedPieces((prev) => {
+                return {
+                  ...prev,
+                  [activePlayerId]: [
+                    ...(prev[activePlayerId as keyof typeof prev] || []),
+                    `${i},${j}`,
+                  ],
+                };
+              });
+            }
           }
         }
       }
-    }
 
-    setBoard(bcpy);
+      setBoard(bcpy);
 
-    if (!move) {
-      boardRef.current = bcpy;
+      if (!move) {
+        boardRef.current = bcpy;
 
-      if (typeof pieceTrayRef?.current?.updatePlacedStatus === "function") {
-        pieceTrayRef?.current?.updatePlacedStatus(index, actualActivePlayer);
+        if (typeof pieceTrayRef?.current?.updatePlacedStatus === "function") {
+          pieceTrayRef?.current?.updatePlacedStatus(index, actualActivePlayer);
+        }
+
+        const nId = Math.max((actualActivePlayer + 1) % 5, 1);
+
+        setActualActivePlayer(nId);
+        setActivePlayerId(nId);
       }
-
-      const nId = Math.max((actualActivePlayer + 1) % 5, 1);
-
-      setActualActivePlayer(nId);
-      setActivePlayerId(nId);
-    }
-  };
+    },
+    [activePlayerId, actualActivePlayer, tilesCoveredByPlacedPieces]
+  );
 
   const updateRefData = useCallback(
     (updatedPieces: Array<MainPiece>, pi: number) => {
@@ -227,11 +235,54 @@ const GameBoard = () => {
     []
   );
 
-  const passTurn = () => {
+  const passTurn = useCallback(() => {
     const nId = Math.max((actualActivePlayer + 1) % 5, 1);
     setActualActivePlayer(nId);
     setActivePlayerId(nId);
-  };
+  }, [actualActivePlayer]);
+
+  const revealPossiblePlacement = useCallback(
+    (data: Piece[][]) => {
+      const bcpy = JSON.parse(JSON.stringify(boardRef.current));
+      const rowLen = data.length;
+      const colLen = data[0].length;
+
+      for (let k = 0; k <= BOARD_SIZE - rowLen; k++) {
+        for (let l = 0; l <= BOARD_SIZE - colLen; l++) {
+          const isValidPlacement = validatePlacement(
+            k,
+            l,
+            rowLen,
+            colLen,
+            bcpy,
+            data,
+            tilesCoveredByPlacedPieces[
+              activePlayerId as keyof typeof tilesCoveredByPlacedPieces
+            ]?.length,
+            activePlayerId
+          );
+
+          if (isValidPlacement) {
+            for (let i = k; i < k + rowLen; i++) {
+              for (let j = l; j < l + colLen; j++) {
+                bcpy[i][j].possible = bcpy[i][j].filled
+                  ? false
+                  : bcpy[i][j].possible || data[i - k][j - l]?.value;
+              }
+            }
+          }
+        }
+      }
+
+      setBoard(() => bcpy);
+    },
+    [activePlayerId, tilesCoveredByPlacedPieces]
+  );
+
+  const resetPossiblePlacement = useCallback(() => {
+    const bcpy = JSON.parse(JSON.stringify(boardRef.current));
+    setBoard(() => bcpy);
+  }, []);
 
   return (
     <>
@@ -245,7 +296,7 @@ const GameBoard = () => {
           {board?.map((row: Array<Tile>, rowId: number) => (
             <div key={rowId} className="flex">
               {row?.map((col: Tile, colId: number) => {
-                const { filled, semifilled, pId } = col || {};
+                const { filled, semifilled, pId, possible } = col || {};
                 const p = players?.[(pId - 1) as keyof typeof players];
                 // @ts-expect-error cannot find the type for this
                 const config = colorConfig[p?.name as keyof typeof colorConfig];
@@ -256,6 +307,7 @@ const GameBoard = () => {
                     colId={colId}
                     key={`${rowId}-${colId}`}
                     filled={filled}
+                    possible={possible}
                     semifilled={semifilled}
                   />
                 );
@@ -311,6 +363,8 @@ const GameBoard = () => {
             actualActivePlayerId={actualActivePlayer}
             pieces={pieces?.[activePlayerId as keyof typeof pieces] || []}
             updateRefData={updateRefData}
+            revealPossiblePlacement={revealPossiblePlacement}
+            resetPossiblePlacement={resetPossiblePlacement}
           />
 
           <div

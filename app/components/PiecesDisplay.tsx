@@ -1,6 +1,6 @@
 import { forwardRef, Ref, useCallback, useImperativeHandle } from "react";
 import DraggablePiece from "./DraggablePiece";
-import { MainPiece, PiecesDisplayType } from "../constants/interfaces";
+import { MainPiece, Piece, PiecesDisplayType } from "../constants/interfaces";
 
 const PiecesDisplay = (
   {
@@ -8,6 +8,8 @@ const PiecesDisplay = (
     actualActivePlayerId,
     pieces: piecesData,
     updateRefData,
+    revealPossiblePlacement,
+    resetPossiblePlacement,
   }: PiecesDisplayType,
   ref: Ref<unknown>
 ) => {
@@ -30,6 +32,16 @@ const PiecesDisplay = (
     [updatePlacedStatus]
   );
 
+  const bindRevealPossiblePlacement = (p: Piece[][]) => {
+    if (actualActivePlayerId !== activePlayerId) return;
+    revealPossiblePlacement(p);
+  };
+
+  const bindResetPossiblePlacement = () => {
+    if (actualActivePlayerId !== activePlayerId) return;
+    resetPossiblePlacement();
+  };
+
   return (
     <div className="flex flex-wrap gap-4 justify-center items-center relative">
       <div
@@ -42,6 +54,8 @@ const PiecesDisplay = (
         return (
           <div key={index}>
             <DraggablePiece
+              revealPossiblePlacement={bindRevealPossiblePlacement}
+              resetPossiblePlacement={bindResetPossiblePlacement}
               activePlayerId={activePlayerId}
               pi={index}
               key={index}

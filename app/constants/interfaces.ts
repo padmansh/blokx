@@ -3,6 +3,7 @@ export interface Tile {
   filled: boolean;
   semifilled: boolean;
   pId: number;
+  possible: boolean;
 }
 
 export interface Piece {
@@ -44,6 +45,8 @@ export interface PiecesDisplayType {
   actualActivePlayerId: number;
   pieces: Array<MainPiece>;
   updateRefData: (p: Array<MainPiece>, pi: number) => void;
+  revealPossiblePlacement: (p: Piece[][]) => void;
+  resetPossiblePlacement: () => void;
 }
 
 export interface DraggablePieces {
@@ -51,6 +54,8 @@ export interface DraggablePieces {
   isPlaced: boolean;
   pi: number;
   activePlayerId: number;
+  revealPossiblePlacement: (p: Piece[][]) => void;
+  resetPossiblePlacement: () => void;
 }
 
 export interface DroppableCells {
@@ -59,6 +64,7 @@ export interface DroppableCells {
   filled: boolean;
   semifilled: boolean;
   activeColorConfig: Color;
+  possible: boolean;
 }
 
 export interface ValidateArgs {

@@ -2,7 +2,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { DraggablePieces, Piece } from "../constants/interfaces";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Rotate from "../assets/Rotate";
 import MirrorImage from "../assets/MirrorImage";
 import { colorConfig, players } from "../constants/colors";
@@ -12,6 +12,8 @@ const DraggablePiece = ({
   isPlaced,
   pi,
   activePlayerId,
+  revealPossiblePlacement,
+  resetPossiblePlacement,
 }: DraggablePieces) => {
   const [pInfo, setPInfo] = useState(piece);
 
@@ -34,7 +36,7 @@ const DraggablePiece = ({
     transform: CSS.Translate.toString(transform),
   };
 
-  const rotatePiece = () => {
+  const rotatePiece = useCallback(() => {
     const piece = JSON.parse(JSON.stringify(pInfo));
     const numRows = piece.length;
     const numCols = piece[0].length;
@@ -49,9 +51,9 @@ const DraggablePiece = ({
     }
 
     setPInfo(rotated);
-  };
+  }, [pInfo]);
 
-  const mirrorImageHorizontalPiece = () => {
+  const mirrorImageHorizontalPiece = useCallback(() => {
     const piece = JSON.parse(JSON.stringify(pInfo));
 
     const mirrored = piece.map((row: Array<Piece>) => {
@@ -62,14 +64,14 @@ const DraggablePiece = ({
     });
 
     setPInfo(mirrored);
-  };
+  }, [pInfo]);
 
-  const mirrorImageVerticalPiece = () => {
+  const mirrorImageVerticalPiece = useCallback(() => {
     const piece = JSON.parse(JSON.stringify(pInfo));
 
     piece.reverse();
     setPInfo(piece);
-  };
+  }, [pInfo]);
 
   return (
     <div
@@ -86,7 +88,17 @@ const DraggablePiece = ({
         <div className="w-full h-[1px] bg-gray-500 top-1/2 -rotate-45 absolute" />
       </div>
 
-      <div ref={setNodeRef} {...listeners} {...attributes} style={style}>
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        style={style}
+        onMouseOver={() => {
+          if (isPlaced) return;
+          revealPossiblePlacement(pInfo);
+        }}
+        onMouseOut={resetPossiblePlacement}
+      >
         {pInfo?.map((row: Array<Piece>, rowId: number) => (
           <div key={rowId} className="flex cursor-grab flex-shrink-0">
             {row?.map((col: Piece, colId: number) => {
